@@ -1,5 +1,5 @@
 const int controlPin[16] = { 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 };
-const int buttonPin = 53;
+const int buttonPin = 18;
 const int ledPin = 13;
 const int triggerType = LOW;
 int tmpStat = 1;
@@ -19,6 +19,10 @@ void setup() {
   Serial.begin(9600);  // initialize serial monitor with 9600 baud
 }
 
+// activate any specified channel
+// relayChannel: the channel number
+// action: 0 for off, 1 for on
+// t: duration in milliseconds
 void channelControl(int relayChannel, int action, int t = 10) {
   int state = LOW;
   String statTXT = " ON";
@@ -56,33 +60,59 @@ void channelControl(int relayChannel, int action, int t = 10) {
   }
 }
 
-void pumpForward(int t=10) {
+// pump water forward, from a silo to the dev tank
+void pumpForward(int t = 10) {
   channelControl(0, 1, t);
   channelControl(0, 0, 10);
 }
 
-void pumpBack(int t=10) {
+// pump water back, from dev tank to a silo
+void pumpBack(int t = 10) {
   channelControl(1, 1, t);
   channelControl(1, 0, 10);
 }
 
-void loop() {
-  if (Serial.available() > 0) {
-    int relay = (int)Serial.read() - 48;
-    if (relay == 42) {
-      for (int i = 0; i < 16; i++) {
-        channelControl(i, 0);  // turn each relay off for 200ms
-      }
-    } else {
-    channelControl(relay, 1);
-    delay(10);
-    }
-  } 
+void pump1Forward(int t = 10) {
+  channelControl(2, t);
+  channelControl(3, t);
+  pumpForward(t);
+}
 
-  while (digitalRead(buttonPin) == HIGH) {
-    digitalWrite(ledPin, HIGH);
-    pumpForward();
+void pump1Back(int t = 10) {
+  channelControl(2, t);
+  channelControl(3, t);
+  pumpBack(t);
+}
+
+void loop() {
+  while (digitalRead(buttonPin) == LOW) {
+    if (Serial.available() > 0) {
+      int inInt = (int)Serial.read() - 48;
+      switch (inInt) {
+        case 1:
+          pump1Forward(5000);
+          break;
+        case 2:
+          pump1Back(5000);
+          break;
+      }
+    }
   }
+  digitalWrite(ledPin, HIGH);
+
+  // current_button = digitalRead(buttonPin);
+  // if ((old_button == LOW)
+  //     && (current_button == HIGH)) {
+  //   buttonOn = !buttonOn;
+  //   delay(100);
+  // }
+  // old_button = current_button;
+  // if (buttonOn == true) {
+  //   pumpForward(0);
+  //   digitalWrite(ledPin, HIGH);
+  // } else {
+  //   digitalWrite(ledPin, LOW);
+  // }
 }
 
 
@@ -91,7 +121,7 @@ void loop() {
 // a testing method to test all 16 relays
 void relayTestSequence() {
   for (int i = 0; i < 16; i++) {
-    channelControl(i, tmpStat, 100);  // turn each relay ON for 200ms
+    channelControl(i, tmpStat, 50);  // turn each relay ON for 200ms
   }
   if (tmpStat) {
     tmpStat = 0;
@@ -100,7 +130,7 @@ void relayTestSequence() {
   }
 
   for (int i = 0; i < 16; i++) {
-    channelControl(i, tmpStat, 0);  // turn each relay ON for 200ms
+    channelControl(i, tmpStat, 10);  // turn each relay ON for 200ms
   }
   if (tmpStat) {
     tmpStat = 0;
